@@ -24,8 +24,6 @@ async fn main() {
     teloxide::repl(bot, |bot: Bot, msg: Message| async move {
         let connection = &mut establish_connection();
 
-        println!("Hello World");
-
         // if the message is a command "/vote option mention" then continue else return
         // print the chat id
         let chat_id = msg.chat.id.0;
