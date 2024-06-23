@@ -24,7 +24,7 @@ async fn main() {
     teloxide::repl(bot, |bot: Bot, msg: Message| async move {
         let connection = &mut establish_connection();
 
-        // if the message is a command "/vote option mention" then continue else return
+        // if the message is a command "/vote vote_type mention" then continue else return
         // print the chat id
         let chat_id = msg.chat.id.0;
         create_group(connection, chat_id);
@@ -56,9 +56,9 @@ async fn main() {
                     teloxide::types::MediaKind::Text(MediaText{text, entities}) => {
                         println!("Text: {:?}", text);
                         // check messages for the following format
-                        // /vote option mention
+                        // /vote vote_type mention
                         // if the message is in the correct format then continue else return
-                        // print the option and mention
+                        // print the vote_type and mention
 
                         if entities.len() != 2 {
                             return Ok(());
@@ -77,7 +77,7 @@ async fn main() {
                             return Ok(());
                         }
 
-                        let option = &text[entities[0].length+1..entities[1].offset-1];
+                        let vote_type = &text[entities[0].length+1..entities[1].offset-1];
 
                         let mentioned_user_id: i64;
 
@@ -114,7 +114,7 @@ async fn main() {
 
                         println!("user: {:?}", user);
 
-                        handle_vote_command(option, mentioned_user_id);
+                        handle_vote_command(connection, &bot, chat_id, vote_type, mentioned_user_id).await?;
                     }
                     _ => {}
                 }

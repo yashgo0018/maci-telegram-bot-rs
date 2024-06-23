@@ -1,6 +1,7 @@
 use diesel::{dsl::insert_into, PgConnection, Connection, RunQueryDsl, ExpressionMethods, QueryDsl};
 use diesel::data_types::PgTimestamp;
 use diesel::sql_types::Timestamp;
+use crate::models;
 
 pub fn establish_connection() -> PgConnection {
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -82,6 +83,16 @@ pub fn get_user_id_by_username(conn: &mut PgConnection, username: &str) -> Optio
         .first::<i64>(conn);
 
     user_id.ok()
+}
+
+pub fn get_user(conn: &mut PgConnection, user_id: i64) -> Option<models::User> {
+    use crate::schema::{*};
+
+    let user = telegram_users::dsl::telegram_users
+        .filter(telegram_users::id.eq(user_id))
+        .first::<models::User>(conn);
+
+    user.ok()
 }
 
 pub fn check_user_in_group(conn: &mut PgConnection, group_id: i64, user_id: i64) -> bool {
