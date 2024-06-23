@@ -1,4 +1,4 @@
-FROM rust:1.79-buster as build
+FROM rust:1.79-buster AS build
 
 # create a new empty shell project
 RUN USER=root cargo new --bin maci-telegram-bot
