@@ -2,12 +2,11 @@ mod models;
 mod schema;
 mod database;
 
-use self::models::*;
 use dotenvy::dotenv;
-
-use teloxide::{prelude::*, utils::command::BotCommands};
+use teloxide::prelude::*;
 use teloxide::types::{MessageKind, MessageLeftChatMember, MessageNewChatMembers};
-use crate::database::{create_user, establish_connection};
+
+use crate::database::{create_group, create_user, establish_connection, insert_user_in_group, remove_user_from_group};
 
 #[tokio::main]
 async fn main() {
@@ -26,6 +25,7 @@ async fn main() {
         // if the message is a command "/vote option mention" then continue else return
         // print the chat id
         let chat_id = msg.chat.id.0;
+        create_group(connection, chat_id);
         println!("Chat ID: {}", chat_id);
 
         if let Some(sender) = msg.from() {
@@ -37,11 +37,14 @@ async fn main() {
             MessageKind::NewChatMembers(MessageNewChatMembers {new_chat_members}) => {
                 for member in new_chat_members {
                     create_user(connection, member);
+                    let member_id = member.id.0 as i64;
+                    insert_user_in_group(connection, chat_id, member_id);
                     println!("Member: {:?}", member);
                 }
             }
             MessageKind::LeftChatMember(MessageLeftChatMember{left_chat_member}) => {
-
+                let member_id = left_chat_member.id.0 as i64;
+                remove_user_from_group(connection, chat_id, member_id);
                 println!("Left Member: {:?}", left_chat_member);
             }
 

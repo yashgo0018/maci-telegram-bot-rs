@@ -24,6 +24,22 @@ diesel::table! {
 }
 
 diesel::table! {
+    telegram_groups (id) {
+        id -> Int8,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+    }
+}
+
+diesel::table! {
+    telegram_groups_users (group_id, user_id) {
+        group_id -> Int8,
+        user_id -> Int8,
+        created_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     telegram_users (id) {
         id -> Int8,
         username -> Nullable<Text>,
@@ -36,8 +52,13 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(telegram_groups_users -> telegram_groups (group_id));
+diesel::joinable!(telegram_groups_users -> telegram_users (user_id));
+
 diesel::allow_tables_to_appear_in_same_query!(
     User,
     _prisma_migrations,
+    telegram_groups,
+    telegram_groups_users,
     telegram_users,
 );
