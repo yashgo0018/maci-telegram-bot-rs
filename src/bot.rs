@@ -2,6 +2,7 @@ use diesel::PgConnection;
 use teloxide::prelude::*;
 use teloxide::types::ChatId;
 use crate::database::get_user;
+use crate::voting_api::call_create_poll_api;
 
 #[derive(Debug)]
 pub enum AvailableVotingTypes {
@@ -14,8 +15,8 @@ pub enum AvailableVotingTypes {
 impl AvailableVotingTypes {
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "make_admin" => Some(AvailableVotingTypes::MakeAdmin),
-            "remove_admin" => Some(AvailableVotingTypes::RemoveAdmin),
+            "addAdmin" => Some(AvailableVotingTypes::MakeAdmin),
+            "removeAdmin" => Some(AvailableVotingTypes::RemoveAdmin),
             "kick_user" => Some(AvailableVotingTypes::KickUser),
             "ban_user" => Some(AvailableVotingTypes::BanUser),
             _ => None
@@ -24,8 +25,8 @@ impl AvailableVotingTypes {
 
     pub fn to_str(&self) -> &str {
         match self {
-            AvailableVotingTypes::MakeAdmin => "make_admin",
-            AvailableVotingTypes::RemoveAdmin => "remove_admin",
+            AvailableVotingTypes::MakeAdmin => "addAdmin",
+            AvailableVotingTypes::RemoveAdmin => "removeAdmin",
             AvailableVotingTypes::KickUser => "kick_user",
             AvailableVotingTypes::BanUser => "ban_user",
         }
@@ -42,24 +43,30 @@ impl AvailableVotingTypes {
 
     async fn create_poll(&self, conn: &mut PgConnection, bot: &Bot, chat_id: i64, mentioned_user_id: i64) -> ResponseResult<()> {
         let user = get_user(conn, mentioned_user_id).unwrap();
+
+        // format user's name to be displayed in the poll
         let mut name = user.first_name;
         if let Some(last_name) = user.last_name {
-            name.push_str(" ");
-            name.push_str(&last_name);
+            name.push_str(format!(" {last_name}").as_str());
         }
         if let Some(username) = user.username {
-            name.push_str(" (@");
-            name.push_str(&username);
-            name.push_str(")");
+            name.push_str(format!(" (@{username})").as_str());
         }
 
+        // create poll question and options
         let poll_question = format!("Should {} be {}?", name, self.to_title_object());
-        let poll_options = vec!["Yes".to_string(), "No".to_string()];
 
-        bot.send_poll(ChatId(chat_id), poll_question, poll_options)
-            .is_anonymous(true)
-            .allows_multiple_answers(false)
-            .await?;
+        // create poll using the http api
+        let poll_id = call_create_poll_api(
+            poll_question.as_str(),
+            "Vote to make user admin",
+            self,
+            chat_id
+        ).await.expect("Error creating poll");
+
+        // send the link of the poll to the group
+        let message = bot.send_message(ChatId(chat_id), format!("Vote for '{}' at https://bot.zk-voting.com/polls/{}", poll_question, poll_id)).await?;
+        bot.pin_chat_message(ChatId(chat_id), message.id).await?;
 
         Ok(())
     }

@@ -2,6 +2,7 @@ mod models;
 mod schema;
 mod database;
 mod bot;
+mod voting_api;
 
 use dotenvy::dotenv;
 use teloxide::prelude::*;
