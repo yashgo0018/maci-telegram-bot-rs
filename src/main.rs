@@ -49,7 +49,6 @@ async fn main() {
             MessageKind::LeftChatMember(MessageLeftChatMember{left_chat_member}) => {
                 let member_id = left_chat_member.id.0 as i64;
                 remove_user_from_group(connection, chat_id, member_id);
-                println!("Left Member: {:?}", left_chat_member);
             }
             MessageKind::Common(message) => {
                 match &message.media_kind {
