@@ -20,9 +20,21 @@ RUN rm ./target/release/deps/maci_telegram_bot*
 RUN cargo build --release
 
 # our final base
-FROM rust:1.79-slim-buster
+FROM debian:buster-slim
 
-RUN apt update -y && apt install -y libssl-dev libpq-dev
+# Set environment variables for non-interactive installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update the package list and install the OpenSSL development dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    libssl-dev \
+    ca-certificates \
+    wget \
+    libpq-dev \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # copy the build artifact from the build stage
 COPY --from=build /maci-telegram-bot/target/release/maci-telegram-bot .
