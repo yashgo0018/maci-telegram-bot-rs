@@ -73,6 +73,17 @@ pub fn remove_user_from_group(conn: &mut PgConnection, group_id: i64, user_id: i
         .expect("Error removing user from group");
 }
 
+pub fn get_user_id_by_username(conn: &mut PgConnection, username: &str) -> Option<i64> {
+    use crate::schema::{*};
+
+    let user_id = telegram_users::dsl::telegram_users
+        .filter(telegram_users::username.eq(username))
+        .select(telegram_users::id)
+        .first::<i64>(conn);
+
+    user_id.ok()
+}
+
 pub fn check_user_in_group(conn: &mut PgConnection, group_id: i64, user_id: i64) -> bool {
     use crate::schema::{*};
 
