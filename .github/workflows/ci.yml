@@ -24,3 +24,5 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/yashgo0018/maci-telegram-bot-rs:latest
+          cache-from: type=registry,ref=ghcr.io/yashgo0018/maci-telegram-bot-rs:latest
+          cache-to: type=inline
