@@ -108,3 +108,53 @@ pub fn check_user_in_group(conn: &mut PgConnection, group_id: i64, user_id: i64)
         Err(_) => false,
     }
 }
+
+pub fn create_poll(conn: &mut PgConnection, id: i64, group_id: i64, initiator_id: i64, mentioned_user_id: i64, question: &str, poll_type: &str, start_time: i32, end_time: i32) {
+    use crate::schema::{*};
+
+    insert_into(polls::dsl::polls)
+        .values((
+            polls::id.eq(id),
+            polls::group_id.eq(group_id),
+            polls::initiator_id.eq(initiator_id),
+            polls::mentioned_user_id.eq(mentioned_user_id),
+            polls::question.eq(question),
+            polls::type_.eq(poll_type),
+            polls::start_time.eq(PgTimestamp(start_time as i64)),
+            polls::end_time.eq(PgTimestamp(end_time as i64))
+        ))
+        .execute(conn)
+        .expect("Error creating poll");
+}
+
+pub fn get_all_active_polls(conn: &mut PgConnection, group_id: i64) -> Vec<models::Poll> {
+    use crate::schema::{*};
+
+    let polls = polls::dsl::polls
+        .filter(polls::finalized.eq(false))
+        .filter(polls::group_id.eq(group_id))
+        .load::<models::Poll>(conn)
+        .expect("Error loading polls");
+
+    polls
+}
+
+pub fn get_poll(conn: &mut PgConnection, poll_id: i64) -> Option<models::Poll> {
+    use crate::schema::{*};
+
+    let poll = polls::dsl::polls
+        .filter(polls::id.eq(poll_id))
+        .first::<models::Poll>(conn);
+
+    poll.ok()
+}
+
+pub fn finalize_poll(conn: &mut PgConnection, poll_id: i64) {
+    use crate::schema::{*};
+
+    diesel::update(polls::dsl::polls)
+        .filter(polls::id.eq(poll_id))
+        .set(polls::finalized.eq(true))
+        .execute(conn)
+        .expect("Error finalizing poll");
+}
