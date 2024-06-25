@@ -15,10 +15,14 @@ pub struct CreatePollRequest {
 pub struct CreatePollResponse {
     #[serde(rename = "pollId")]
     pub id: i64,
+    #[serde(rename = "startTime")]
+    pub start_time: i32,
+    #[serde(rename = "endTime")]
+    pub end_time: i32,
     pub message: String
 }
 
-pub async fn call_create_poll_api(name: &str, description: &str, vote_type: &AvailableVotingTypes, telegram_chat_id: i64) -> Result<i64, reqwest::Error>{
+pub async fn call_create_poll_api(name: &str, description: &str, vote_type: &AvailableVotingTypes, telegram_chat_id: i64) -> Result<CreatePollResponse, reqwest::Error>{
     let duration = 86400;
     let vote_type = vote_type.to_str();
     let endpoint = std::env::var("MACI_API_SERVER").expect("MACI_API_SERVER must be set");
@@ -43,5 +47,5 @@ pub async fn call_create_poll_api(name: &str, description: &str, vote_type: &Ava
 
     println!("poll id: {:?}", res.id);
 
-    Ok(res.id)
+    Ok(res)
 }

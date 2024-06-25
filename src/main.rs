@@ -3,13 +3,14 @@ mod schema;
 mod database;
 mod bot;
 mod voting_api;
+mod utils;
 
 use dotenvy::dotenv;
 use teloxide::prelude::*;
-use teloxide::types::{MediaText, MessageCommon, MessageKind, MessageLeftChatMember, MessageNewChatMembers};
+use teloxide::types::{MediaText, MessageKind, MessageLeftChatMember, MessageNewChatMembers};
 use crate::bot::handle_vote_command;
 
-use crate::database::{create_group, create_user, establish_connection, get_user_id_by_username, insert_user_in_group, remove_user_from_group};
+use crate::database::{db_create_group, db_create_user, db_establish_connection, db_get_user_id_by_username, db_insert_user_in_group, db_remove_user_from_group};
 
 #[tokio::main]
 async fn main() {
@@ -23,16 +24,18 @@ async fn main() {
 
 
     teloxide::repl(bot, |bot: Bot, msg: Message| async move {
-        let connection = &mut establish_connection();
+        let connection = &mut db_establish_connection();
 
         // if the message is a command "/vote vote_type mention" then continue else return
         // print the chat id
+        let mut initiator_id = 0;
         let chat_id = msg.chat.id.0;
-        create_group(connection, chat_id);
+        db_create_group(connection, chat_id);
         println!("Chat ID: {}", chat_id);
 
         if let Some(sender) = msg.from() {
-            create_user(connection, sender);
+            db_create_user(connection, sender);
+            initiator_id = sender.id.0 as i64;
             println!("Sender ID: {:?}", sender);
         }
 
@@ -41,15 +44,15 @@ async fn main() {
         match &msg.kind {
             MessageKind::NewChatMembers(MessageNewChatMembers {new_chat_members}) => {
                 for member in new_chat_members {
-                    create_user(connection, member);
+                    db_create_user(connection, member);
                     let member_id = member.id.0 as i64;
-                    insert_user_in_group(connection, chat_id, member_id);
+                    db_insert_user_in_group(connection, chat_id, member_id);
                     println!("Member: {:?}", member);
                 }
             }
             MessageKind::LeftChatMember(MessageLeftChatMember{left_chat_member}) => {
                 let member_id = left_chat_member.id.0 as i64;
-                remove_user_from_group(connection, chat_id, member_id);
+                db_remove_user_from_group(connection, chat_id, member_id);
             }
             MessageKind::Common(message) => {
                 match &message.media_kind {
@@ -84,7 +87,7 @@ async fn main() {
                         match &entities[1].kind {
                             teloxide::types::MessageEntityKind::Mention => {
                                 let mention = &text[entities[1].offset+1..];
-                                let user_id = get_user_id_by_username(connection, mention);
+                                let user_id = db_get_user_id_by_username(connection, mention);
                                 if let Some(user_id) = user_id {
                                     mentioned_user_id = user_id;
                                 } else {
@@ -93,7 +96,7 @@ async fn main() {
                                 }
                             }
                             teloxide::types::MessageEntityKind::TextMention {user} => {
-                                create_user(connection, user);
+                                db_create_user(connection, user);
                                 mentioned_user_id = user.id.0 as i64;
                             }
                             _ => {
@@ -114,7 +117,7 @@ async fn main() {
 
                         println!("user: {:?}", user);
 
-                        handle_vote_command(connection, &bot, chat_id, vote_type, mentioned_user_id).await?;
+                        handle_vote_command(connection, &bot, chat_id, vote_type, initiator_id, mentioned_user_id).await?;
                     }
                     _ => {}
                 }

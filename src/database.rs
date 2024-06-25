@@ -1,15 +1,14 @@
 use diesel::{dsl::insert_into, PgConnection, Connection, RunQueryDsl, ExpressionMethods, QueryDsl};
 use diesel::data_types::PgTimestamp;
-use diesel::sql_types::Timestamp;
 use crate::models;
 
-pub fn establish_connection() -> PgConnection {
+pub fn db_establish_connection() -> PgConnection {
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     PgConnection::establish(&database_url)
         .unwrap_or_else(|err| panic!("Error connecting to {} - err {}", database_url, err))
 }
 
-pub fn create_user(conn: &mut PgConnection, user: &teloxide::types::User) {
+pub fn db_create_user(conn: &mut PgConnection, user: &teloxide::types::User) {
     use crate::schema::{*};
 
     let user_id = user.id.0 as i64;
@@ -36,7 +35,7 @@ pub fn create_user(conn: &mut PgConnection, user: &teloxide::types::User) {
         .expect("Error inserting user");
 }
 
-pub fn create_group(conn: &mut PgConnection, chat_id: i64) {
+pub fn db_create_group(conn: &mut PgConnection, chat_id: i64) {
     use crate::schema::{*};
 
     insert_into(telegram_groups::dsl::telegram_groups)
@@ -49,7 +48,7 @@ pub fn create_group(conn: &mut PgConnection, chat_id: i64) {
         .expect("Error inserting group");
 }
 
-pub fn insert_user_in_group(conn: &mut PgConnection, group_id: i64, user_id: i64) {
+pub fn db_insert_user_in_group(conn: &mut PgConnection, group_id: i64, user_id: i64) {
     use crate::schema::{*};
 
     insert_into(telegram_groups_users::dsl::telegram_groups_users)
@@ -63,7 +62,7 @@ pub fn insert_user_in_group(conn: &mut PgConnection, group_id: i64, user_id: i64
         .expect("Error inserting user in group");
 }
 
-pub fn remove_user_from_group(conn: &mut PgConnection, group_id: i64, user_id: i64) {
+pub fn db_remove_user_from_group(conn: &mut PgConnection, group_id: i64, user_id: i64) {
     use crate::schema::{*};
 
     diesel::delete(
@@ -74,7 +73,7 @@ pub fn remove_user_from_group(conn: &mut PgConnection, group_id: i64, user_id: i
         .expect("Error removing user from group");
 }
 
-pub fn get_user_id_by_username(conn: &mut PgConnection, username: &str) -> Option<i64> {
+pub fn db_get_user_id_by_username(conn: &mut PgConnection, username: &str) -> Option<i64> {
     use crate::schema::{*};
 
     let user_id = telegram_users::dsl::telegram_users
@@ -85,7 +84,7 @@ pub fn get_user_id_by_username(conn: &mut PgConnection, username: &str) -> Optio
     user_id.ok()
 }
 
-pub fn get_user(conn: &mut PgConnection, user_id: i64) -> Option<models::User> {
+pub fn db_get_user(conn: &mut PgConnection, user_id: i64) -> Option<models::User> {
     use crate::schema::{*};
 
     let user = telegram_users::dsl::telegram_users
@@ -95,7 +94,7 @@ pub fn get_user(conn: &mut PgConnection, user_id: i64) -> Option<models::User> {
     user.ok()
 }
 
-pub fn check_user_in_group(conn: &mut PgConnection, group_id: i64, user_id: i64) -> bool {
+pub fn db_check_user_in_group(conn: &mut PgConnection, group_id: i64, user_id: i64) -> bool {
     use crate::schema::{*};
 
     let result = telegram_groups_users::dsl::telegram_groups_users
@@ -109,7 +108,7 @@ pub fn check_user_in_group(conn: &mut PgConnection, group_id: i64, user_id: i64)
     }
 }
 
-pub fn create_poll(conn: &mut PgConnection, id: i64, group_id: i64, initiator_id: i64, mentioned_user_id: i64, question: &str, poll_type: &str, start_time: i32, end_time: i32) {
+pub fn db_create_poll(conn: &mut PgConnection, id: i64, group_id: i64, initiator_id: i64, mentioned_user_id: i64, question: &str, poll_type: &str, start_time: i32, end_time: i32) {
     use crate::schema::{*};
 
     insert_into(polls::dsl::polls)
@@ -127,7 +126,7 @@ pub fn create_poll(conn: &mut PgConnection, id: i64, group_id: i64, initiator_id
         .expect("Error creating poll");
 }
 
-pub fn get_all_active_polls(conn: &mut PgConnection, group_id: i64) -> Vec<models::Poll> {
+pub fn db_get_all_active_polls(conn: &mut PgConnection, group_id: i64) -> Vec<models::Poll> {
     use crate::schema::{*};
 
     let polls = polls::dsl::polls
@@ -139,7 +138,7 @@ pub fn get_all_active_polls(conn: &mut PgConnection, group_id: i64) -> Vec<model
     polls
 }
 
-pub fn get_poll(conn: &mut PgConnection, poll_id: i64) -> Option<models::Poll> {
+pub fn db_get_poll(conn: &mut PgConnection, poll_id: i64) -> Option<models::Poll> {
     use crate::schema::{*};
 
     let poll = polls::dsl::polls
@@ -149,7 +148,23 @@ pub fn get_poll(conn: &mut PgConnection, poll_id: i64) -> Option<models::Poll> {
     poll.ok()
 }
 
-pub fn finalize_poll(conn: &mut PgConnection, poll_id: i64) {
+pub fn db_check_if_active_poll_exists(conn: &mut PgConnection, group_id: i64, mentioned_user_id: i64, poll_type: &str) -> bool {
+    use crate::schema::{*};
+
+    let result = polls::dsl::polls
+        .filter(polls::finalized.eq(false))
+        .filter(polls::group_id.eq(group_id))
+        .filter(polls::mentioned_user_id.eq(mentioned_user_id))
+        .filter(polls::type_.eq(poll_type))
+        .first::<models::Poll>(conn);
+
+    match result {
+        Ok(_) => true,
+        Err(_) => false,
+    }
+}
+
+pub fn db_finalize_poll(conn: &mut PgConnection, poll_id: i64) {
     use crate::schema::{*};
 
     diesel::update(polls::dsl::polls)
