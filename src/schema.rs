@@ -24,6 +24,23 @@ diesel::table! {
 }
 
 diesel::table! {
+    polls (id) {
+        id -> Int8,
+        question -> Text,
+        #[sql_name = "type"]
+        type_ -> Text,
+        group_id -> Int8,
+        initiator_id -> Int8,
+        mentioned_user_id -> Nullable<Int8>,
+        start_time -> Timestamp,
+        end_time -> Timestamp,
+        created_at -> Timestamp,
+        updated_at -> Timestamp,
+        finalized -> Bool,
+    }
+}
+
+diesel::table! {
     telegram_groups (id) {
         id -> Int8,
         created_at -> Timestamp,
@@ -58,6 +75,7 @@ diesel::joinable!(telegram_groups_users -> telegram_users (user_id));
 diesel::allow_tables_to_appear_in_same_query!(
     User,
     _prisma_migrations,
+    polls,
     telegram_groups,
     telegram_groups_users,
     telegram_users,
