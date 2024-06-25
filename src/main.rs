@@ -31,12 +31,13 @@ async fn main() {
         let mut initiator_id = 0;
         let chat_id = msg.chat.id.0;
         db_create_group(connection, chat_id);
-        println!("Chat ID: {}", chat_id);
 
         if let Some(sender) = msg.from() {
-            db_create_user(connection, sender);
             initiator_id = sender.id.0 as i64;
-            println!("Sender ID: {:?}", sender);
+            // create user
+            db_create_user(connection, sender);
+            // insert user in the group
+            db_insert_user_in_group(connection, chat_id, initiator_id);
         }
 
         println!("Message: {:?}", msg);
@@ -44,14 +45,20 @@ async fn main() {
         match &msg.kind {
             MessageKind::NewChatMembers(MessageNewChatMembers {new_chat_members}) => {
                 for member in new_chat_members {
-                    db_create_user(connection, member);
                     let member_id = member.id.0 as i64;
+                    // create user
+                    db_create_user(connection, member);
+                    // insert user in the group
                     db_insert_user_in_group(connection, chat_id, member_id);
-                    println!("Member: {:?}", member);
                 }
             }
             MessageKind::LeftChatMember(MessageLeftChatMember{left_chat_member}) => {
                 let member_id = left_chat_member.id.0 as i64;
+                // create user
+                db_create_user(connection, left_chat_member);
+                // insert user in the group
+                db_insert_user_in_group(connection, chat_id, member_id);
+                // remove user from the group
                 db_remove_user_from_group(connection, chat_id, member_id);
             }
             MessageKind::Common(message) => {
@@ -96,8 +103,9 @@ async fn main() {
                                 }
                             }
                             teloxide::types::MessageEntityKind::TextMention {user} => {
-                                db_create_user(connection, user);
                                 mentioned_user_id = user.id.0 as i64;
+                                // create user
+                                db_create_user(connection, user);
                             }
                             _ => {
                                 return Ok(());
@@ -106,14 +114,13 @@ async fn main() {
 
                         // check if the user is in the group
                         let user = bot.get_chat_member(ChatId(chat_id), UserId(mentioned_user_id as u64)).await?;
-                        // if user.is_none() {
-                        //     bot.send_message(ChatId(chat_id),  "User not in group").await?;
-                        //     return Ok(());
-                        // }
                         if user.kind == teloxide::types::ChatMemberKind::Left {
                             bot.send_message(ChatId(chat_id),  "User not in group").await?;
                             return Ok(());
                         }
+
+                        // insert user in the group
+                        db_insert_user_in_group(connection, chat_id, mentioned_user_id);
 
                         println!("user: {:?}", user);
 

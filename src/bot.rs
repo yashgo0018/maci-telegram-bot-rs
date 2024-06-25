@@ -93,7 +93,6 @@ impl AvailableVotingTypes {
     }
 }
 
-
 pub async fn handle_vote_command(conn: &mut PgConnection, bot: &Bot, chat_id: i64, vote_type: &str, initiator_id: i64, mentioned_user_id: i64) -> ResponseResult<()> {
     let vote_type = AvailableVotingTypes::from_str(vote_type);
     if vote_type.is_none() {
